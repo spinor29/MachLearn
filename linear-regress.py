@@ -3,22 +3,28 @@
 import numpy as np
 from sklearn import linear_model
 
-def solve_it(input_data):
-    # Parse the input
-    print 'Loading data...'
+def load(filename, delimiter=''):
+    # This function read data from filename and returns a NumPy array
+    input_data_file = open(filename, 'r')
+    input_data = ''.join(input_data_file.readlines())
+    input_data_file.close()
     lines = input_data.split('\n')
     lines.remove('')
     
-    m = len(lines) # Number of data points in the training set
-    X = []
-    y = []
+    Z = []
     for line in lines:
-        fields = line.split(',')
-        X.append([ float(fields[0]), float(fields[1]) ])
-        y.append(float(fields[2]))
+        fields = [ float(field) for field in line.split(',') ]
+        Z.append(fields)
+    return np.array(Z)
 
-    X = np.array(X)
-    y = np.array(y)
+
+def solve_it(input_data):    
+    ### Arrange data
+    X = input_data[:,:2]
+    y = input_data[:,2]
+    
+    print "The first ten training examples: "
+    print X[:10,:], '\n'
     
     # Use sklearn's linear regression module
     # default: linear_model.LinearRegression(fit_intercept=True, copy_X=True, normalize=False)
@@ -51,9 +57,14 @@ import sys
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         file_location = sys.argv[1].strip()
-        input_data_file = open(file_location, 'r')
-        input_data = ''.join(input_data_file.readlines())
-        input_data_file.close()
+        print "Loading data..."
+        
+        ### Self-defined load function, return a NumPy array ###
+        #input_data = load(file_location, delimiter=',')
+        
+        ### Use genfromtxt() from numpy to load data ###
+        input_data = np.genfromtxt(file_location, delimiter=',')
+        
         print 'Solving: ', file_location
         solve_it(input_data)
     else:
