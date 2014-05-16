@@ -1,31 +1,38 @@
 #!/usr/bin/python
+# Logsitic regression
 
-import numpy
+import numpy as np
 from sklearn import linear_model
 from pylab import *
 
-def solve_it(input_data):
-    # Parse the input
-    print 'Loading data...'
+def load(filename, delimiter=''):
+    # This function read data from filename and returns a NumPy array
+    input_data_file = open(filename, 'r')
+    input_data = ''.join(input_data_file.readlines())
+    input_data_file.close()
     lines = input_data.split('\n')
     lines.remove('')
     
-    m = len(lines) # Number of data points in the training set
-    X = []
-    y = []
+    Z = []
     for line in lines:
-        fields = line.split(',')
-        X.append([ float(fields[0]), float(fields[1]) ])
-        y.append(int(fields[2]))
+        fields = [ float(field) for field in line.split(',') ]
+        Z.append(fields)
+    return np.array(Z)
+    
 
-    X = numpy.array(X)
-    y = numpy.array(y)
+def solve_it(input_data):
     
+    ### Arrange data
+    X = input_data[:,:2]
+    y = input_data[:,2]
     
-    # Plot data
-    print "Plotting data..."
-    pos = numpy.where(y==1)
-    neg = numpy.where(y==0)
+    print "The first ten training examples: "
+    print X[:10,:], '\n'
+    
+    ### Plot data
+    print "Plotting data...", '\n'
+    pos = np.where(y==1)
+    neg = np.where(y==0)
     
     plt.ion() # interactive mode for plot, used with raw_input() 
     #subplot(311)
@@ -36,35 +43,39 @@ def solve_it(input_data):
     plt.show()
     raw_input('Press enter to continue...')
     
-    # Use sklearn's linear regression module
-    # default: linear_model.LinearRegression(fit_intercept=True, copy_X=True, normalize=False)
-    # fit_intercept=True means adding a column of values 1 to X to calculate theta_0
+    ### Use sklearn's logistic regression module
+    ### default: sklearn.linear_model.LogisticRegression(penalty='l2', dual=False, tol=0.0001, C=1.0, fit_intercept=True, intercept_scaling=1, class_weight=None, random_state=None)
+
+    ### fit_intercept=True means adding a column of values 1 to X to calculate theta_0
     
-    print
-    print "Solving with Scikit-learn (sklearn)... "
+    print 'Solving with Scikit-learn (sklearn)... '
     
     sol = linear_model.LogisticRegression(tol = 0.0001)
     sol.fit(X,y)
     
-    print "Theta values from sklearn: "
-    # intercept_ is theta_0, coef_ is [ theta_1, theta_2, ...., theta_n ]
+    print 'Theta values from sklearn: (Intercept, theta_1, theta2... )'
+    ### intercept_ is theta_0, coef_ is [ theta_1, theta_2, ...., theta_n ]
     print ' ', sol.intercept_
     #print sol.coef_
     for coef in sol.coef_: print ' ', coef
-    print
     
-    # Compute accuracy on the training set
-    print "Mean accuracy: "
-    print sol.score(X,y)
+    ### Compute accuracy on the training set
+    print '\n', "Mean accuracy: "
+    print sol.score(X,y), '\n'
     
 import sys
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         file_location = sys.argv[1].strip()
-        input_data_file = open(file_location, 'r')
-        input_data = ''.join(input_data_file.readlines())
-        input_data_file.close()
+        print "Loading data..."
+        
+        ### Self-defined load function, return a NumPy array ###
+        #input_data = load(file_location, delimiter=',')
+        
+        ### Use genfromtxt() from numpy to load data ###
+        input_data = np.genfromtxt(file_location, delimiter=',')
+        
         print 'Solving: ', file_location
         solve_it(input_data)
     else:
