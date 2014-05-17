@@ -1,10 +1,49 @@
 #!/usr/bin/python
-# Logsitic regression
+# Logistic regression
 
+import time
 import numpy as np
+import scipy as sp
 from sklearn import linear_model
 from pylab import *
 
+def sigmoid(x):
+    return 1. / (1. + np.exp(-x))
+
+def costFunction(theta, *Z):
+    ### dim(X) = [m, n], m: number of examples, n: number of features
+    ### dim(theta) = [n]
+    X = Z[0]
+    y = Z[1]
+    m = len(y) # Number of training examples
+    
+    z = X.dot(theta) # dim(z) = [m, 1]
+    h = sigmoid(z) # dim(h) = [m, 1]
+    
+    J = -1. / m * ((y.T.dot(np.log(h)) + (1 - y).dot(np.log(1-h))))
+    #grad = 1. / m * (h - y).T.dot(X) # dim(grad) = [1, n+1]
+
+    return J
+
+def gradFunction(theta, *Z):
+    ### dim(X) = [m, n], m: number of examples, n: number of features
+    ### dim(theta) = [n]
+    X = Z[0]
+    y = Z[1]
+    m = len(y) # Number of training examples
+
+    z = X.dot(theta) # dim(z) = [m, 1]
+    h = sigmoid(z) # dim(h) = [m, 1]
+    #J = - (1. / m * (y.T.dot(log(h)) + (1 - y).dot(log(1-h))))
+    grad = (1. / m * (h - y).T.dot(X)).T # dim(grad) = [1, n+1]
+    return grad
+
+def predict(theta, X):
+    ### Predict whether the label is 0 or 1 using the learned theta values
+    h = sigmoid(X.dot(theta))
+    p = [ int (i) for i in (h >= 0.5) ]
+    return p
+    
 def load(filename, delimiter=''):
     # This function read data from filename and returns a NumPy array
     input_data_file = open(filename, 'r')
@@ -12,19 +51,41 @@ def load(filename, delimiter=''):
     input_data_file.close()
     lines = input_data.split('\n')
     lines.remove('')
-    
+
     Z = []
     for line in lines:
         fields = [ float(field) for field in line.split(',') ]
         Z.append(fields)
     return np.array(Z)
+
+def logistic(X, y, fit_intercept=True):
+    ### Self-defined logistic regression function  
+    theta = np.zeros(len(X[0]))
+    X = np.c_[ np.ones(len(y)), X ] # Add a column of intercept
+    theta = np.r_[0, theta] # Add intercept
+    
+    Z = (X, y)
+    J = costFunction(theta, *Z)
+    print 'Cost at initial theta (zeros): ', J, '\n'
+
+    ### Minimize J using fmin_bfgs in SciPy
+    print 'Minimizing cost function using scipy.optimize.fmin_bfgs...'
+    
+    theta, J = sp.optimize.fmin_bfgs(costFunction, x0=theta, fprime=gradFunction, args=(X,y), full_output=True)[0:2]
+    #theta, J = sp.optimize.minimize(costFunction, x0=theta, args=(X,y), method='BFGS')
+    print 'Minimized cost = ', J, '\n'
+    
+    return theta
     
 
 def solve_it(input_data):
-    
+
     ### Arrange data
     X = input_data[:,:2]
     y = input_data[:,2]
+    
+    X[:,0] = (X[:,0] - np.mean(X[:,0]))/np.std(X[:,0])
+    X[:,1] = (X[:,1] - np.mean(X[:,1]))/np.std(X[:,1])
     
     print "The first ten training examples: "
     print X[:10,:], '\n'
@@ -43,6 +104,22 @@ def solve_it(input_data):
     plt.show()
     raw_input('Press enter to continue...')
     
+    ### Do logistic regression using a cost function
+    #start = time.time()
+    theta = logistic(X, y, fit_intercept = True)
+    #end = time.time()
+    #print "elapsed time using self-defined logistic regression function: ", end - start
+    
+    print 'theta at minimum = ', theta, '\n'
+    #print 'Minimized cost = ', J, '\n'
+    
+    ### Predict whether the label is 0 or 1 using learned theta values
+    X = np.c_[ np.ones(len(y)), X ]
+    print "Predicting using learned theta values on training examples..."
+    p = predict(theta, X)
+    hits = [ int (i) for i in (p == y) ] # whether predicted value match y
+    print "Mean accuracy = ", float(sum(hits))/len(y), '\n'
+    
     ### Use sklearn's logistic regression module
     ### default: sklearn.linear_model.LogisticRegression(penalty='l2', dual=False, tol=0.0001, C=1.0, fit_intercept=True, intercept_scaling=1, class_weight=None, random_state=None)
 
@@ -50,8 +127,14 @@ def solve_it(input_data):
     
     print 'Solving with Scikit-learn (sklearn)... '
     
+    X = input_data[:,:2]
+    
+    #start = time.time()
     sol = linear_model.LogisticRegression(tol = 0.0001)
     sol.fit(X,y)
+    
+    #end = time.time()
+    #print "elapsed time using Scikit-learn = ", end - start
     
     print 'Theta values from sklearn: (Intercept, theta_1, theta2... )'
     ### intercept_ is theta_0, coef_ is [ theta_1, theta_2, ...., theta_n ]
@@ -60,8 +143,7 @@ def solve_it(input_data):
     for coef in sol.coef_: print ' ', coef
     
     ### Compute accuracy on the training set
-    print '\n', "Mean accuracy: "
-    print sol.score(X,y), '\n'
+    print '\n', "Mean accuracy using sklearn = ", sol.score(X,y), '\n'
     
 import sys
 
