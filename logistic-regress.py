@@ -87,7 +87,48 @@ def mapFeature(X1, X2, degree):
             else:
                 X_new = np.c_[ X_new, X_temp ]  # add a new column
     return X_new
+
+def plotData(X, y):
+    pos = np.where(y==1)
+    neg = np.where(y==0)
+    
+    plt.ion() # interactive mode for plot, used with raw_input() 
+    #subplot(311)
+    scatter(X[pos,0], X[pos,1], marker='o')
+    scatter(X[neg,0], X[neg,1], marker='x')
+    xlabel('Exam 1 score')
+    ylabel('Exam 2 score')
+    plt.show()
+    raw_input('Press enter to continue...')
+
+def plotDecisionBoundary(theta, X, y, sol):
+    ### Plot the decision boundary
+    plt.ion()
+    plotData(X[:,:2],y)
+    
+    # Set the mesh grid
+    u = np.linspace(-2, 2, 50)
+    v = np.linspace(-2, 2, 50)
+
+    z = np.zeros((len(u), len(v)))
+    u_v = np.zeros((len(u),len(v))) # u_v stores coordinates of the mesh grid
+    for i in range(len(u)):
+        u_v[:,0] = u[i]
+        for j in range(len(v)):
+            u_v[j,1] = v[j]
             
+        z0 = mapFeature(u_v[:,0], u_v[:,1], 6) # dim(z0) = [len(v), n features]
+        
+        z[i,:] = sol.predict_proba(z0)[:, 0] # dim(predict_proba) = [len(v), 2], proba for label 0 and label 1
+            
+    z = z.T # Transpose is necessary for plotting u as x-axis, and v as y-axis
+    
+    ### plot contour proba = 0.5, which is the decison boundary
+    plt.contour(u, v, z, [0.5]) 
+    plt.show()
+    raw_input('Press enter to continue...')
+    
+
 def solve_it(input_data):
 
     ### Arrange data
@@ -102,24 +143,12 @@ def solve_it(input_data):
     
     ### Plot data
     print "Plotting data...", '\n'
-    pos = np.where(y==1)
-    neg = np.where(y==0)
-    
-    plt.ion() # interactive mode for plot, used with raw_input() 
-    #subplot(311)
-    scatter(X[pos,0], X[pos,1], marker='o')
-    scatter(X[neg,0], X[neg,1], marker='x')
-    xlabel('Exam 1 score')
-    ylabel('Exam 2 score')
-    plt.show()
-    raw_input('Press enter to continue...')
+    plotData(X, y)
     
     # Create additional features for regularization
     degree = 6
     X = mapFeature(X[:,0], X[:,1], degree)
     print X
-    
-    #return 0
     
     ### Do logistic regression using a cost function
     #start = time.time()
@@ -149,7 +178,7 @@ def solve_it(input_data):
     #X = input_data[:,:2]
     
     #start = time.time()
-    sol = linear_model.LogisticRegression(tol = 0.0001)
+    sol = linear_model.LogisticRegression(penalty='l2', tol = 0.0001, C=1)
     sol.fit(X,y)
     
     #end = time.time()
@@ -163,6 +192,11 @@ def solve_it(input_data):
     
     ### Compute accuracy on the training set
     print '\n', "Mean accuracy using sklearn = ", sol.score(X,y), '\n'
+    
+    ### Plot decision boundary
+    print "Plotting decision boundary..."
+    plotDecisionBoundary(theta, X, y, sol)
+
     
 import sys
 
