@@ -77,7 +77,17 @@ def logistic(X, y, fit_intercept=True):
     
     return theta
     
-
+def mapFeature(X1, X2, degree):
+    ### Map the two input features to polynomial features for regularization
+    for i in range(1, degree+1):
+        for j in range(i+1):
+            X_temp = np.power(X1, (i-j)) * (np.power(X2, j))
+            if (i == 1) & (j == 0):
+                X_new = X_temp  # initialize X_new
+            else:
+                X_new = np.c_[ X_new, X_temp ]  # add a new column
+    return X_new
+            
 def solve_it(input_data):
 
     ### Arrange data
@@ -104,6 +114,13 @@ def solve_it(input_data):
     plt.show()
     raw_input('Press enter to continue...')
     
+    # Create additional features for regularization
+    degree = 6
+    X = mapFeature(X[:,0], X[:,1], degree)
+    print X
+    
+    #return 0
+    
     ### Do logistic regression using a cost function
     #start = time.time()
     theta = logistic(X, y, fit_intercept = True)
@@ -114,9 +131,9 @@ def solve_it(input_data):
     #print 'Minimized cost = ', J, '\n'
     
     ### Predict whether the label is 0 or 1 using learned theta values
-    X = np.c_[ np.ones(len(y)), X ]
+    X1 = np.c_[ np.ones(len(y)), X ]
     print "Predicting using learned theta values on training examples..."
-    p = predict(theta, X)
+    p = predict(theta, X1)
     hits = [ int (i) for i in (p == y) ] # whether predicted value match y
     print "Mean accuracy = ", float(sum(hits))/len(y), '\n'
     
@@ -124,10 +141,12 @@ def solve_it(input_data):
     ### default: sklearn.linear_model.LogisticRegression(penalty='l2', dual=False, tol=0.0001, C=1.0, fit_intercept=True, intercept_scaling=1, class_weight=None, random_state=None)
 
     ### fit_intercept=True means adding a column of values 1 to X to calculate theta_0
+    ### C is the inverse of lambda, which is the parameter for regularization
+    ### default is l2 regularization
     
     print 'Solving with Scikit-learn (sklearn)... '
     
-    X = input_data[:,:2]
+    #X = input_data[:,:2]
     
     #start = time.time()
     sol = linear_model.LogisticRegression(tol = 0.0001)
