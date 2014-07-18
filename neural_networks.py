@@ -1,9 +1,8 @@
 #!/usr/bin/python
 # Neural network learning
 # 
-# This file contains code for hand-written digit recoginition using the
-# neural network method. The implementation is based on one of the
-# programming assignment for Andrew Ng's 2014 Machine Learning course. 
+# Implementation of the feedforward and backpropagation algorithms for neural
+# networks learning and the application of hand-written digit recoginition.
 
 import time
 import numpy as np
@@ -26,8 +25,8 @@ def plotImage(X):
     n = size[1]
     nrows = int(math.floor(sqrt(m)))
     ncols = int(math.ceil(m/nrows))
-    npixels = 20 # number of pixels per side
-    assert npixels*npixels == len(X[0]) # assert 20*20 == 400
+    npixels = int(sqrt(n)) # number of pixels per side
+    #assert npixels*npixels == len(X[0]) 
     
     pad = 1 # between images padding
     display_array = np.ones((pad + nrows * (npixels + pad), pad+ncols*(npixels+pad)))
@@ -37,7 +36,9 @@ def plotImage(X):
         for i in range(ncols):
             nx = pad+j*(npixels+pad)
             ny = pad+i*(npixels+pad)
-            temp = np.reshape(X[curr_ex],(npixels,npixels),order='F')
+            
+            #temp = np.reshape(X[curr_ex],(npixels,npixels),order='F') # order='F' for matlab style input file
+            temp = np.reshape(X[curr_ex],(npixels,npixels))
             for k in range(npixels):
                 display_array[nx+k][ny:(ny+npixels)] = temp[k]
             curr_ex += 1
@@ -59,8 +60,8 @@ def nnCostFunction(nn_params, *Z):
     lamb = Z[5]
     J_or_G = Z[6] # return J or Gradient
 
-    Theta1 = nn_params[:((n_input+1)*n_hidden)].reshape(n_hidden,n_input+1)
-    Theta2 = nn_params[((n_input+1)*n_hidden):].reshape(num_labels,n_hidden+1)
+    Theta1 = nn_params[:((n_input+1)*n_hidden)].reshape(n_hidden,n_input+1) # n_hidden x (n_input+1)
+    Theta2 = nn_params[((n_input+1)*n_hidden):].reshape(num_labels,n_hidden+1) # n_labels x (n_hidden+1)
 
     m = len(X) # number of training examples
     
@@ -70,15 +71,15 @@ def nnCostFunction(nn_params, *Z):
     
     # Feedforward
 
-    X = np.c_[ np.ones(m), X ] # add a column of intercept. X: 5000x401
-    a2 = sigmoid(X.dot(Theta1.T)) # Theta1.T: 401x25, a2: 5000x25
+    X = np.c_[ np.ones(m), X ] # add a column of intercept. X: m x (n_input+1)
+    a2 = sigmoid(X.dot(Theta1.T)) # a2: m x n_hidden
     
-    a2 = np.c_[ np.ones(m), a2 ] # 5000x26
-    h = sigmoid(a2.dot(Theta2.T)) # Theta2.T: 26x10, h: 5000x10
+    a2 = np.c_[ np.ones(m), a2 ] # m x (n_hidden+1)
+    h = sigmoid(a2.dot(Theta2.T)) # h: m x num_labels
     
-    for c in range(1, num_labels+1):
+    for c in range(num_labels):
         y2 = (y == c)
-        J -= 1. / m * (np.log(h.T[c-1,:]).dot(y2) + np.log(1-h.T[c-1,:]).dot(1-y2))
+        J -= 1. / m * (np.log(h.T[c,:]).dot(y2) + np.log(1-h.T[c,:]).dot(1-y2))
     
     th1sq = np.multiply(Theta1, Theta1)
     th2sq = np.multiply(Theta2, Theta2)
@@ -88,10 +89,10 @@ def nnCostFunction(nn_params, *Z):
     J += lamb / (2. * m) * (np.sum(th1sq)+np.sum(th2sq))
     
     # Backpropogation
-    
+    #start = time.time()
     for t in range(m):
-        a1 = X[t,:] # a1 is a row vector, 1x401
-        z2 = a1.dot(Theta1.T) # z2: 1x25
+        a1 = X[t,:] # a1 is a row vector, 1 x (n_input+1)
+        z2 = a1.dot(Theta1.T) # z2: 1 x n_hidden
         a2 = sigmoid(z2) # row vector
 
         a2 = np.concatenate([np.array([1]), a2]) # a2: 1x26
@@ -99,11 +100,11 @@ def nnCostFunction(nn_params, *Z):
         a3 = sigmoid(z3)
         
         d3 = np.zeros(num_labels)
-        for c in range(1, num_labels+1):
-            d3[c-1] = a3[c-1] - (y[t] == c)
+        for c in range(num_labels):
+            d3[c] = a3[c] - (y[t] == c)
     
-        d2 = d3.dot(Theta2) # d2: 1x26
-        d2 = d2[1:] # d2: 1x25
+        d2 = d3.dot(Theta2) # d2: 1 x (n_hidden+1)
+        d2 = d2[1:] # d2: 1 x n_hidden
         
         d2 = np.multiply(d2,sigmoidGradient(z2))
 
@@ -112,9 +113,12 @@ def nnCostFunction(nn_params, *Z):
         a2 = a2[np.newaxis,:]
         a1 = a1[np.newaxis,:]
 
-        Theta2_grad += d3.T.dot(a2) # 10x26
-        Theta1_grad += d2.T.dot(a1) # 25x401
-        
+        Theta2_grad += d3.T.dot(a2) # num_labels x (1+n_hidden)
+        Theta1_grad += d2.T.dot(a1) # n_hidden x (1+n_input)
+    
+    #end = time.time()
+    #print "Elasped time:", end-start
+    
     Theta1_grad /= m
     Theta2_grad /= m
     
@@ -213,37 +217,21 @@ def nnPredict(Theta1, Theta2, X):
     h1 = sigmoid(X.dot(Theta1.T))
     h1 = np.c_[ np.ones(m), h1]
     h2 = sigmoid(h1.dot(Theta2.T))
-    p = np.argmax(h2, axis=1) + 1 # p is 1-d array
+    p = np.argmax(h2, axis=1) # p is 1-d array
     return p
-    
 
-def solve_it(input_data):
-    ### Arrange data   
-    X = input_data['X']
-    y = input_data['y']
-    
-    m = len(X) # number of training examples
-    input_layer_size = len(X[0]) # 400 = 20x20 input images of digits
-    hidden_layer_size = 25
-    num_labels = 10 # 10 labels, from 1 to 10 (mapped "0" to label 10)
-    
-    print "m = ", m
-    print "Size of input layer:", input_layer_size
-    print "Size of hidden layer:", hidden_layer_size
-    
-    # Display images of 100 random samples from the training examples
-    plotImage(random.sample(X,100))
-    
+def checkNNCost(*Z):
     # Loading pre-initialized parameters
     print "Loading neural network parameters..."
     params_data = scipy.io.loadmat('nn_weights.mat')
+    
+    # Let label 0, instead of label 10, represent digit 0
+    Theta2 = params_data['Theta2']
+    Theta2 = np.concatenate((Theta2[9,:],Theta2[:8,:]),axis=0)
+    params_data['Theta2'] = Theta2
     temp_params = np.array([ params_data['Theta1'],params_data['Theta2'] ])
 
     nn_params = np.concatenate((temp_params[0].flatten(), temp_params[1].flatten())) # flatten to a 1d array
-    
-    lamb = 0. # lambda for regularization
-    
-    Z = (X, y, input_layer_size, hidden_layer_size, num_labels, lamb)
     
     print '\nFeedforward using neural network...\n'
     
@@ -269,6 +257,72 @@ def solve_it(input_data):
     print 'Checking gradient...'
     checkNNGradients(lamb)
     
+   
+def parse(train_file,test_file):
+    # load training data and test data
+    train_data = np.genfromtxt(train_file, delimiter=',',skip_header=1)
+    test_data = np.genfromtxt(test_file, delimiter=',',skip_header=1)
+    ncols = len(train_data[0])
+    
+    input_layer_size = ncols - 1
+    scale = 255. # scaling factor for X to avoid exponential overflow
+    
+    np.random.shuffle(train_data)
+    
+    m = len(train_data)
+    
+    # Divide training data to training part and cross validation part
+    m1 = int(m*0.7) # number of training samples, m-m1: number of cross validation samples
+    
+    # Train the classifier based on smaller samples
+    #sample = np.array(random.sample(train_data[:m1],5000))
+    #y_train = np.array(map(int,sample[:,0]))
+    #X_train = sample[:,1:] / scale # scaling down to avoid
+    
+    # Train the classifier based on the first m1 examples
+    y_train = np.array(map(int,train_data[:m1,0]))
+    X_train = train_data[:m1,1:] / scale
+    
+    y_cross = np.array(map(int,train_data[m1:,0]))
+    X_cross = train_data[m1:,1:] / scale
+    
+    # Train the classifier based on all training examples
+    #y_train = np.array(map(int,train_data[:,0]))
+    #X_train = train_data[:,1:] / scale # scaling down to avoid exponential overflow
+    
+    X_test = test_data / scale
+    input_data = {}
+    input_data['y'] = y_train
+    input_data['X'] = X_train
+    input_data['y_cross'] = y_cross
+    input_data['X_cross'] = X_cross
+    input_data['X_test'] = X_test
+    
+    return input_data
+
+def solve_it(input_data):
+    ### Arrange data   
+    X = input_data['X'] # training data
+    y = input_data['y'] # training data
+    #X_test = input_data['X_test'] # test data
+    
+    m = len(X) # number of training examples
+    input_layer_size = len(X[0]) # number of pixels per image
+    hidden_layer_size = 100
+    num_labels = 10 # 10 labels, from 0 to 9
+    
+    print "m = ", m
+    print "Size of input layer:", input_layer_size
+    print "Size of hidden layer:", hidden_layer_size
+    
+    # Display images of 100 random samples from the training examples
+    plotImage(random.sample(X,100))
+    
+    lamb = 0. # lambda for regularization  
+    Z = (X, y, input_layer_size, hidden_layer_size, num_labels, lamb)
+    
+    # Check cost function with pre-initialized parameters
+    #checkNNCost(*Z)
     
     # Implement a function to initialize the weights of the neural network
     initial_Theta1 = randInitializeWeights(input_layer_size, hidden_layer_size)
@@ -278,12 +332,22 @@ def solve_it(input_data):
     initial_nn_params = np.concatenate((initial_Theta1.flatten(), initial_Theta2.flatten()))
 
     # Backpropagation
+    lamb = 1.0
     Z = (X, y, input_layer_size, hidden_layer_size, num_labels, lamb)
     print 'lambda =', lamb
     
     print 'Minimizing cost function...'
     start = time.time()
     
+    # Timing test for calling J_func and G_func
+    #for i in range(1):
+    #    J = J_func(initial_nn_params, *Z)
+    #    grad = G_func(initial_nn_params, *Z)
+    #end = time.time()
+    #print 'J =', J
+    #print 'Elasped time:',end-start
+    #return
+   
     # Use SciPy's fmin_l_bfgs_b for optimization. It is much faster than fmin_cg.
     # For some reason, fmin_bfgs is not able to get the result for this case,
     # probabaly because of the large training data.
@@ -305,29 +369,64 @@ def solve_it(input_data):
     Theta1 = nn_params[:((input_layer_size+1)*hidden_layer_size)].reshape(hidden_layer_size,input_layer_size+1)
     Theta2 = nn_params[((input_layer_size+1)*hidden_layer_size):].reshape(num_labels,hidden_layer_size+1)
     
-    # predict results
-    pred = nnPredict(Theta1, Theta2, X)
+    # Calculate training accuracy
     
+    pred = nnPredict(Theta1, Theta2, X)
+    print np.shape(pred)
+    print np.shape(y)
+    print pred
+    print y
+    print 'Training set accuracy:', np.mean((pred == y.flatten()).astype(int)) * 100,'%'
+
+    if ('X_cross') in input_data:
+        X_cross = input_data['X_cross']
+        y_cross = input_data['y_cross']
+        pred = nnPredict(Theta1, Theta2, X_cross)
+        print np.shape(pred)
+        print np.shape(y_cross)
+        print pred
+        print y_cross
     #print pred
     #print y.flatten()
-    print 'Training set accuracy:', np.mean((pred == y.flatten()).astype(int)) * 100,'%'
+        print 'Cross validation set accuracy:', np.mean((pred == y_cross.flatten()).astype(int)) * 100,'%'
 
     # visualize neural network
     plotImage(Theta1[:,1:])
-    
-    return
+
+    # Predict labels of test data
+    if ('X_test') in input_data:
+        X_test = input_data['X_test'] # test data
+        pred = nnPredict(Theta1, Theta2, X_test)
+        output_data = '\n'.join(map(str,pred))
+  
+    return output_data
 
     
 import sys
 import scipy.io
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
+    if len(sys.argv) > 2:
+        # load training and test data
+        train_file = sys.argv[1].strip()
+        test_file = sys.argv[2].strip()
+        print 'Loading data...', train_file, test_file
+        input_data = parse(train_file,test_file)
+        output_data = solve_it(input_data)
+        with open('y_test.txt', 'w') as f:
+            f.write(output_data)
+        f.closed
+    elif len(sys.argv) >1:
+        # load only training data
         file_location = sys.argv[1].strip()
-        print "Loading data..."
+        print 'Loading data...', file_location
         input_data = scipy.io.loadmat(file_location)
-        print 'Solving: ', file_location
+        y = input_data['y']
+        # in nn_data.mat, label 10 represented digit 0
+        for i in len(y):
+            if y[i,0] == 10: y[i,0] = 0 # let label 0 represent digit 0
+        input_data['y'] = y
         solve_it(input_data)
     else:
-        print 'This example requires an input file. Please select one from the directory. (i.e. python neural_networks nn_data.mat)'
+        print 'This example requires at lease one input files. (For example: python neural_networks.py train.csv test.csv)'
 
