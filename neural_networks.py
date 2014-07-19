@@ -300,6 +300,22 @@ def parse(train_file,test_file):
     
     return input_data
 
+def sample(train_file):
+    train_data = open(train_file, 'r')
+    train = ''.join(train_data.readlines())
+    train_data.close()
+
+    lines = train.split('\n')
+    m1 = len(train)
+    train_sample = random.sample(lines[1:m1],5000)
+    output_data = lines[0].rstrip() + '\n'
+    for i in range(5000):
+        output_data += ''.join(train_sample[i].rstrip()) + '\n'
+        
+    with open('test_sample.csv', 'w') as f:
+        f.write(output_data)
+    f.closed
+
 def solve_it(input_data):
     ### Arrange data   
     X = input_data['X'] # training data
@@ -401,7 +417,6 @@ def solve_it(input_data):
   
     return output_data
 
-    
 import sys
 import scipy.io
 
@@ -411,6 +426,7 @@ if __name__ == '__main__':
         train_file = sys.argv[1].strip()
         test_file = sys.argv[2].strip()
         print 'Loading data...', train_file, test_file
+        #sample(test_file)
         input_data = parse(train_file,test_file)
         output_data = solve_it(input_data)
         with open('y_test.txt', 'w') as f:
